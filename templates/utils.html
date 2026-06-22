@@ -159,6 +159,7 @@
 		{{ post.body|safe }}
 		{% call poll(post) %}
 	</div>
+	{% if prefs.layout != "compact-overlay" %}
 	<div class="post_score" title="{{ post.score.1 }}">
     {% if prefs.hide_score != "on" %}
     {{ post.score.0 }}
@@ -166,7 +167,17 @@
     &#x2022;
     {% endif %}
     <span class="label"> Upvotes</span></div>
+	{% endif %}
 	<div class="post_footer">
+		{% if prefs.layout == "compact-overlay" %}
+		<span class="post_score_inline" title="{{ post.score.1 }}">
+			{% if prefs.hide_score != "on" %}
+			{{ post.score.0 }}
+			{% else %}
+			&#x2022;
+			{% endif %}
+		</span>
+		{% endif %}
 		<ul id="post_links">
 			<li>
 				<a href="{{ post.permalink }}">
@@ -220,6 +231,47 @@
 {% macro post_in_list(post) -%}
 {% set post_should_be_blurred = (post.flags.nsfw && prefs.blur_nsfw=="on") || (post.flags.spoiler && prefs.blur_spoiler=="on") -%}
 <div class="post{% if post.flags.stickied %} stickied{% endif %}{% if post_should_be_blurred %} post_blurred{% endif %}" id="{{ post.id }}">
+	{% if prefs.layout == "compact-overlay" %}
+	<h2 class="post_title">
+		<span class="post_title_text">
+			<a href="{{ post.permalink }}">{{ post.title }}</a>{% if post.flags.nsfw %} <small class="nsfw">NSFW</small>{% endif %}{% if post.flags.spoiler %} <small class="spoiler">Spoiler</small>{% endif %}
+		</span>
+	</h2>
+	<p class="post_header">
+		{% let community -%}
+		{% if post.community.starts_with("u_") -%}
+			{% let community = format!("u/{}", &post.community[2..]) -%}
+		{% else -%}
+			{% let community = format!("r/{}", post.community) -%}
+		{% endif -%}
+		<a class="post_subreddit" href="/{{ community }}">{{ community }}</a>
+		{% if post.flair.flair_parts.len() > 0 %}
+		<span class="dot">&bull;</span>
+		{% if post.flair.foreground_color == "#FFFFFF" || post.flair.foreground_color == "#ffffff" || post.flair.foreground_color == "white" %}
+		<a href="/r/{{ post.community }}/search?q=flair_name%3A%22{{ post.flair.text }}%22&restrict_sr=on"
+			class="post_flair post_flair_compact_overlay"
+			style="color:var(--accent);"
+			dir="ltr">{% call render_flair(post.flair.flair_parts) %}</a>
+		{% else %}
+		<a href="/r/{{ post.community }}/search?q=flair_name%3A%22{{ post.flair.text }}%22&restrict_sr=on"
+			class="post_flair post_flair_compact_overlay"
+			style="color:{{ post.flair.foreground_color }};"
+			dir="ltr">{% call render_flair(post.flair.flair_parts) %}</a>
+		{% endif %}
+		{% endif %}
+		<span class="dot">&bull;</span>
+		<a class="post_author {{ post.author.distinguished }}" href="/u/{{ post.author.name }}">u/{{ post.author.name }}</a>
+		<span class="dot">&bull;</span>
+		<span class="created" title="{{ post.created }}">{{ post.rel_time }}</span>
+		{% if !post.awards.is_empty() && prefs.hide_awards != "on" %}
+			{% for award in post.awards.clone() %}
+			<span class="award" title="{{ award.name }}">
+				<img alt="{{ award.name }}" src="{{ award.icon_url }}" width="16" height="16"/>
+			</span>
+			{% endfor %}
+		{% endif %}
+	</p>
+	{% else %}
 	<p class="post_header">
 		{% let community -%}
 		{% if post.community.starts_with("u_") -%}
@@ -249,6 +301,7 @@
 		{% endif %}
 		<a href="{{ post.permalink }}">{{ post.title }}</a>{% if post.flags.nsfw %} <small class="nsfw">NSFW</small>{% endif %}{% if post.flags.spoiler %} <small class="spoiler">Spoiler</small>{% endif %}
 	</h2>
+	{% endif %}
 	<!-- POST MEDIA/THUMBNAIL -->
 	{% if (prefs.layout.is_empty() || prefs.layout == "card") && post.post_type == "image" %}
 	<div class="post_media_content">
@@ -284,7 +337,8 @@
 	{% call render_hls_notification(format!("{}%23{}", &self.url[1..].replace("&", "%26").replace("+", "%2B"), post.id)) %}
 	{% endif %}
 	{% else if post.post_type != "self" %}
-	<a class="post_thumbnail{% if post.thumbnail.url.is_empty() %} no_thumbnail{% endif %}" href="{% if post.post_type == "link" %}{{ post.media.url }}{% else %}{{ post.permalink }}{% endif %}" rel="nofollow">
+	{% set is_youtube = post.media.url.contains("youtube.com") || post.media.url.contains("youtu.be") %}
+	<a class="post_thumbnail{% if post.thumbnail.url.is_empty() %} no_thumbnail{% endif %}{% if prefs.layout == "compact-overlay" && (!post.overlay_image_url.is_empty() || post.post_type == "video" || post.post_type == "gif" || post.post_type == "gallery") %} overlay_trigger{% endif %}" href="{% if prefs.layout == "compact-overlay" && (!post.overlay_image_url.is_empty() || post.post_type == "video" || post.post_type == "gif" || post.post_type == "gallery") %}{% if is_youtube %}{{ post.media.url }}{% else %}{{ post.overlay_image_url }}{% endif %}{% else if post.post_type == "link" %}{{ post.media.url }}{% else %}{{ post.permalink }}{% endif %}" rel="nofollow"{% if prefs.layout == "compact-overlay" %} data-overlay-src="{{ post.overlay_image_url }}" data-overlay-type="{{ post.post_type }}" data-overlay-mp4="{{ post.media.url }}" data-overlay-hls="{{ post.media.alt_url }}" data-overlay-poster="{{ post.media.poster }}" data-overlay-gallery="{% if post.post_type == "gallery" %}{% for image in post.gallery %}{{ image.url }}{% if !loop.last %}|{% endif %}{% endfor %}{% endif %}"{% endif %}>
 		{% if post.thumbnail.url.is_empty() %}
 		<svg viewBox="0 0 100 106" width="140" height="53" xmlns="http://www.w3.org/2000/svg">
 			<title>Thumbnail</title>
@@ -303,6 +357,7 @@
 		<span>{% if post.post_type == "link" %}{{ post.domain }}{% else %}{{ post.post_type }}{% endif %}</span>
 	</a>
 	{% endif %}
+	{% if prefs.layout != "compact-overlay" %}
 	<div class="post_score" title="{{ post.score.1 }}">
     {% if prefs.hide_score != "on" %}
     {{ post.score.0 }}
@@ -310,6 +365,7 @@
     &#x2022;
     {% endif %}
     <span class="label"> Upvotes</span></div>
+	{% endif %}
 	<div class="post_body post_preview">
 		{{ post.body|safe }}
 	</div>
@@ -317,6 +373,16 @@
 	{% call poll(post) %}
 
 	<div class="post_footer">
+		{% if prefs.layout == "compact-overlay" %}
+		<span class="post_score_inline" title="{{ post.score.1 }}">
+			{% if prefs.hide_score != "on" %}
+			{{ post.score.0 }}
+			{% else %}
+			&#x2022;
+			{% endif %}
+		</span>
+		<span class="post_footer_dot">&bull;</span>
+		{% endif %}
 		<a href="{{ post.permalink }}" class="post_comments" title="{{ post.comments.1 }} {% if post.comments.1 == "1" %}comment{% else %}comments{% endif %}">{{ post.comments.0 }} {% if post.comments.1 == "1" %}comment{% else %}comments{% endif %}</a>
 	</div>
 </div>
