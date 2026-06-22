@@ -73,6 +73,20 @@
 		</main>
 		{% endblock %}
 
+		{% if prefs.layout == "compact-overlay" %}
+		<div id="image_overlay" class="image_overlay" aria-hidden="true">
+			<div class="image_overlay_backdrop"></div>
+			<div class="image_overlay_content" role="dialog" aria-modal="true">
+				<button class="image_overlay_close" type="button" aria-label="Close image overlay">x</button>
+				<button class="overlay_gallery_nav overlay_gallery_prev" type="button" aria-label="Previous image" style="display: none;">&lt;</button>
+				<button class="overlay_gallery_nav overlay_gallery_next" type="button" aria-label="Next image" style="display: none;">&gt;</button>
+				<div class="overlay_gallery_counter" style="display: none;"></div>
+				<img id="image_overlay_img" alt="Expanded preview">
+				<video id="image_overlay_video" controls preload="metadata"></video>
+			</div>
+		</div>
+		{% endif %}
+
 		<!-- FOOTER -->
 		{% block footer %}
 			<footer>
