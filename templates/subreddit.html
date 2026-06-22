@@ -68,6 +68,9 @@
                             <script src="/hls.min.js?v={{ crate::utils::short_git_hash() }}"></script>
                             <script src="/playHLSVideo.js?v={{ crate::utils::short_git_hash() }}"></script>
                         {% endif %}
+                        {% if prefs.layout == "compact-overlay" %}
+                            <script src="/image_overlay.js?v={{ crate::utils::short_git_hash() }}"></script>
+                        {% endif %}
                     </div>
                 {% endif %}
 

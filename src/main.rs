@@ -314,6 +314,9 @@ async fn main() {
 	app
 		.at("/searchTabs.js")
 		.get(|_| resource(include_str!("../static/searchTabs.js"), "text/javascript", false).boxed());
+	app
+		.at("/image_overlay.js")
+		.get(|_| resource(include_str!("../static/image_overlay.js"), "text/javascript", false).boxed());
 
 	app.at("/commits.atom").get(|_| async move { proxy_commit_info().await }.boxed());
 	app.at("/instances.json").get(|_| async move { proxy_instances().await }.boxed());
