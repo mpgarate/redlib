@@ -10,6 +10,7 @@ use hyper::{body::Buf, header, Body, Request as HyperRequest, Response as HyperR
 use log::{error, info, trace, warn};
 use percent_encoding::{percent_encode, CONTROLS};
 use serde_json::Value;
+use std::borrow::Cow;
 use std::result::Result;
 use std::sync::atomic::Ordering;
 use std::sync::atomic::{AtomicBool, AtomicU16, AtomicU64};
@@ -267,13 +268,14 @@ fn reddit_short_head(path: String, quarantine: bool, base_path: &'static str, ho
 /// will recurse on the URL that Reddit provides in the Location HTTP header
 /// in its response.
 fn request(method: &'static Method, path: String, redirect: bool, quarantine: bool, base_path: &'static str, host: &'static str) -> Boxed<Result<WreqResponse, String>> {
-	// Reddit blocks `/comments/` API paths by their literal text, but decodes an
-	// encoded slash before routing. Rewritten here so redirects get it too.
-	let url = if base_path == REDDIT_URL_BASE {
-		format!("{base_path}{}", path.replacen("/comments/", "/comments%2F", 1))
+	// Keep the logical path unchanged for caches and diagnostics. Reddit blocks
+	// literal anonymous comments routes, so only rewrite the outgoing OAuth URL.
+	let transport_path = if base_path == REDDIT_URL_BASE {
+		comments_transport_path(&path)
 	} else {
-		format!("{base_path}{path}")
+		Cow::Borrowed(path.as_str())
 	};
+	let url = format!("{base_path}{transport_path}");
 
 	let mut headers: Vec<(String, String)> = vec![
 		("Host".into(), host.into()),
@@ -358,6 +360,42 @@ fn request(method: &'static Method, path: String, redirect: bool, quarantine: bo
 		}
 	}
 	.boxed()
+}
+
+/// Encode one separator in comments API routes to avoid Reddit's anonymous
+/// request block while leaving every other path and the query string intact.
+fn comments_transport_path(path: &str) -> Cow<'_, str> {
+	let base = path.split('?').next().unwrap_or(path);
+	let (separator, tail) = if let Some(tail) = base.strip_prefix("/comments/") {
+		("/comments".len(), tail)
+	} else if let Some(scoped) = base.strip_prefix("/r/") {
+		let Some((subreddit, rest)) = scoped.split_once('/') else {
+			return Cow::Borrowed(path);
+		};
+		let Some(tail) = rest.strip_prefix("comments/") else {
+			return Cow::Borrowed(path);
+		};
+		if subreddit.is_empty() {
+			return Cow::Borrowed(path);
+		}
+		("/r/".len() + subreddit.len(), tail)
+	} else {
+		return Cow::Borrowed(path);
+	};
+
+	let tail = tail.strip_suffix(".json").unwrap_or(tail).trim_end_matches('/');
+	let mut segments = tail.split('/');
+	let Some(post_id) = segments.next() else {
+		return Cow::Borrowed(path);
+	};
+	let _slug = segments.next();
+	let comment_id = segments.next();
+
+	if post_id.is_empty() || comment_id.is_some_and(str::is_empty) || segments.next().is_some() {
+		return Cow::Borrowed(path);
+	}
+
+	Cow::Owned(format!("{}%2F{}", &path[..separator], &path[separator + 1..]))
 }
 
 /// Make a request to a Reddit API and parse the JSON response
@@ -574,6 +612,46 @@ mod tests {
 		assert_eq!(reddit_dns_name("www.reddit.com"), ALTERNATIVE_REDDIT_DNS_HOST);
 		assert_eq!(reddit_dns_name("WWW.REDDIT.COM"), ALTERNATIVE_REDDIT_DNS_HOST);
 		assert_eq!(reddit_dns_name("oauth.reddit.com"), "oauth.reddit.com");
+	}
+
+	#[test]
+	fn test_comments_transport_path_encodes_scoped_and_short_routes() {
+		for (path, expected) in [
+			(
+				"/r/rust/comments/18t5968/title/.json?sort=new&raw_json=1",
+				"/r/rust%2Fcomments/18t5968/title/.json?sort=new&raw_json=1",
+			),
+			("/r/rust/comments/18t5968/_/kfbqlbc.json?context=3", "/r/rust%2Fcomments/18t5968/_/kfbqlbc.json?context=3"),
+			("/comments/18t5968.json?raw_json=1", "/comments%2F18t5968.json?raw_json=1"),
+			("/comments/18t5968/_/kfbqlbc.json?context=3", "/comments%2F18t5968/_/kfbqlbc.json?context=3"),
+			("/r/comments/comments/18t5968.json", "/r/comments%2Fcomments/18t5968.json"),
+		] {
+			assert_eq!(comments_transport_path(path), expected);
+			assert_eq!(comments_transport_path(expected), expected, "encoding must be idempotent");
+		}
+	}
+
+	#[test]
+	fn test_comments_transport_path_preserves_other_routes_and_queries() {
+		for path in [
+			"/r/popular/hot.json?after=t3_abc",
+			"/r/rust/comments.json",
+			"/r/rust/commentsXYZ/abc.json",
+			"/r/rust/wiki/comments/abc.json",
+			"/r//comments/abc.json",
+			"/comments/.json",
+			"/comments.json",
+			"/user/example/comments.json",
+			"/user/example/comments/abc.json",
+			"/search.json?q=/r/rust/comments/abc",
+			"https://example.com/r/rust/comments/abc.json",
+			"//example.com/r/rust/comments/abc.json",
+		] {
+			assert!(matches!(comments_transport_path(path), Cow::Borrowed(_)), "{path}");
+		}
+
+		let path = "/r/rust/comments/abc.json?sort=new&context=3&q=a%2Bb&empty=&sort=top";
+		assert_eq!(comments_transport_path(path), "/r/rust%2Fcomments/abc.json?sort=new&context=3&q=a%2Bb&empty=&sort=top");
 	}
 
 	#[tokio::test(flavor = "multi_thread")]
