@@ -31,6 +31,7 @@
             {% endif %}
             <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico">
             <link rel="stylesheet" type="text/css" href="/style.css?v={{ crate::utils::short_git_hash() }}">
+            {% if prefs.layout == "compact-overlay" %}<link rel="stylesheet" type="text/css" href="/overlay.css?v={{ crate::utils::short_git_hash() }}">{% endif %}{# OVERLAY: static/overlay.css, see OVERLAY.md #}
             <script src="/static/keyboardcommands.js?v={{ crate::utils::short_git_hash() }}"></script>
             <script src="/autoplayVisible.js?v={{ crate::utils::short_git_hash() }}" defer></script>
 		<!-- Video quality -->
@@ -92,6 +93,8 @@
                 {% endblock %}
             </main>
         {% endblock %}
+
+        {% include "overlay.html" %}{# OVERLAY: the lightbox and its script, see OVERLAY.md #}
 
 		<!-- FOOTER -->
         {% block footer %}

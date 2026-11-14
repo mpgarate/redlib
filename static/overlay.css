@@ -1,0 +1,306 @@
+/*
+	COMPACT OVERLAY LAYOUT  (layout=compact-overlay)
+
+	Everything this layout changes about how a page looks, in one file that upstream never
+	touches. `static/style.css` is kept byte for byte as upstream wrote it, and this file is
+	loaded after it, so nothing here races with the cascade. Where a rule repeats something the
+	`compact` layout already declares, that copy is deliberate: sharing the selector with
+	`style.css` is what forced this layout to edit upstream's rules, and every one of those edits
+	was a rebase conflict. See OVERLAY.md.
+
+	The layout's DOM is upstream's DOM. The score is not moved with markup: the grid below puts
+	it on the footer row, which is the shape upstream itself uses for narrow screens, and the
+	lightbox gets its media from the islands templates/overlay.html emits.
+*/
+
+/* The post card: no score column, title above the byline, one line tall where it can be. */
+
+.compact-overlay .post {
+    grid-template:
+        "post_title post_title post_thumbnail" auto
+        "post_header post_header post_thumbnail" auto
+        "post_media post_media post_thumbnail" auto
+        "post_body post_body post_thumbnail" auto
+        "post_poll post_poll post_thumbnail" auto
+        "post_notification post_notification post_thumbnail" auto
+        "post_score post_footer post_thumbnail" auto
+        / auto 1fr fit-content(min(20%, 152px));
+}
+
+.compact-overlay .post:not(.highlighted) {
+    border-radius: 0;
+    margin: 0;
+    padding: 0;
+}
+
+.compact-overlay .post:first-of-type {
+    border-radius: 5px 5px 0 0;
+    overflow: hidden;
+}
+
+.compact-overlay .post:last-of-type {
+    border-radius: 0 0 5px 5px;
+    overflow: hidden;
+}
+
+.compact-overlay .post.highlighted {
+    border-radius: 5px;
+}
+
+.compact-overlay .post:not(:last-of-type):not(.highlighted):not(.stickied) {
+    border-bottom: 0;
+}
+
+.compact-overlay .post:not(:last-child) {
+    margin-bottom: 0;
+}
+
+/* The score, read as the first word of the footer line rather than as its own column. */
+
+.compact-overlay .post_score {
+    margin: 0;
+    padding: 0 0 0 15px;
+    border-radius: 0;
+    align-self: center;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    opacity: 0.65;
+}
+
+.compact-overlay .post_score::after {
+    content: "\2022";
+    margin-left: 8px;
+    opacity: 0.6;
+}
+
+/* The byline and title swap rows, so the title carries the row above it. */
+
+.compact-overlay .post_header {
+    margin: 2px 15px 0 15px;
+    font-size: 12px;
+}
+
+.compact-overlay .post_title {
+    margin: 9px 15px 0 15px;
+    font-size: 14px;
+    line-height: 1.35;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Upstream wraps nothing around the title, so the anchor is the flex item that has to shrink. */
+.compact-overlay .post_title a:not(.post_flair) {
+    flex: 1;
+    min-width: 0;
+}
+
+.compact-overlay #post_url {
+    margin: 9px 15px 0 15px;
+}
+
+.compact-overlay .post_body {
+    margin: 9px 15px 0 15px;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+/* Flair loses Reddit's pill: it reads as part of the byline, not as a badge on the title.
+   Reddit's own background stays inline on the anchor, so it has to be beaten here; the white
+   foregrounds image_overlay.js swaps for the accent are the part CSS cannot see. */
+
+.compact-overlay .post_flair {
+    background: none !important;
+    padding: 0;
+    margin-right: 0;
+    border-radius: 0;
+    opacity: 0.7;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+/* The rest of the card, tightened the way the compact layout tightens it. */
+
+.compact-overlay .post_preview {
+    display: none;
+}
+
+.compact-overlay .post_media {
+    max-width: calc(100% - 30px);
+    margin: 2.5px auto;
+}
+
+.compact-overlay .post_thumbnail {
+    width: 75px;
+    height: 75px;
+}
+
+.compact-overlay .post_footer {
+    margin: 3px 15px 10px 0;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+}
+
+.compact-overlay footer {
+    margin-top: 20px;
+}
+
+/* The per-post media list, read once by image_overlay.js. See templates/overlay.html. */
+
+.overlay_data {
+    display: none;
+}
+
+/* The lightbox. Nothing above this line is on screen until it opens. */
+
+.image_overlay {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+}
+
+.image_overlay.active {
+    display: flex;
+}
+
+.image_overlay_backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+}
+
+.image_overlay_content {
+    position: relative;
+    max-width: min(98vw, 1400px);
+    max-height: 95vh;
+    padding: 8px;
+    background: var(--post);
+    border: var(--panel-border);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    z-index: 1;
+}
+
+.image_overlay_content img {
+    display: none;
+    max-width: 100%;
+    max-height: 90vh;
+    border-radius: 6px;
+}
+
+.image_overlay_content video {
+    display: none;
+    max-width: 100%;
+    max-height: 90vh;
+    border-radius: 6px;
+    background: #000;
+}
+
+.image_overlay_content img.active {
+    display: block;
+}
+
+.image_overlay_content video.active {
+    display: block;
+}
+
+.image_overlay_content img.hidden {
+    display: none;
+}
+
+.image_overlay_close {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 32px;
+    height: 32px;
+    border-radius: 16px;
+    border: 0;
+    background: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    font-size: 16px;
+    line-height: 32px;
+    cursor: pointer;
+    z-index: 2;
+    transition: background 0.2s;
+}
+
+.image_overlay_close:hover {
+    background: rgba(0, 0, 0, 0.85);
+}
+
+.overlay_open {
+    overflow: hidden;
+}
+
+.overlay_gallery_nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 32px;
+    height: 32px;
+    border-radius: 16px;
+    border: 0;
+    background: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    font-size: 16px;
+    line-height: 32px;
+    cursor: pointer;
+    z-index: 2;
+    transition: background 0.2s;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.overlay_gallery_nav:hover {
+    background: rgba(0, 0, 0, 0.85);
+}
+
+.overlay_gallery_nav:active {
+    background: rgba(0, 0, 0, 0.9);
+}
+
+.overlay_gallery_prev {
+    left: 6px;
+}
+
+.overlay_gallery_next {
+    right: 6px;
+}
+
+.overlay_gallery_counter {
+    position: absolute;
+    bottom: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 4px 12px;
+    background: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    border-radius: 16px;
+    font-size: 14px;
+    line-height: 24px;
+    z-index: 2;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* Narrow screens: upstream's own post grid already puts the score on the footer row here, so
+   only its margin and the score arrow it adds have to go. */
+
+@media screen and (max-width: 507px) {
+    .compact-overlay .post_score {
+        margin: 0;
+        padding: 0 0 0 15px;
+    }
+
+    .compact-overlay .post_score::before {
+        content: none;
+    }
+}

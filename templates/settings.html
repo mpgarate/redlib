@@ -72,6 +72,7 @@
     <label for="layout">Layout:</label>
     <select name="layout" id="layout">
         {{ utils::options(prefs.layout, ["card", "clean", "compact"], "card") }}
+        {% include "overlay_layout_option.html" %}{# OVERLAY: the layout's own option, see OVERLAY.md #}
     </select>
 </div>
 <div class="prefs-group">

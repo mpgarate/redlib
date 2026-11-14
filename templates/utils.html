@@ -1,3 +1,5 @@
+{% import "overlay.html" as overlay %}{# OVERLAY: overlay::data() below, see OVERLAY.md #}
+
 {% macro options(current, values, default) -%}
     {% for value in values %}
         <option value="{{ value }}" {% if current == value.to_string() || (current == "" && value.to_string() == default.to_string()) %}selected{% endif %}>
@@ -230,6 +232,7 @@
 {% macro post_in_list(post) -%}
     {% set post_should_be_blurred = (post.flags.nsfw && prefs.blur_nsfw=="on") || (post.flags.spoiler && prefs.blur_spoiler=="on") -%}
     <div class="post{% if post.flags.stickied %} stickied{% endif %}{% if post_should_be_blurred %} post_blurred{% endif %}" id="{{ post.id }}">
+        {{ overlay::data(post) }}{# OVERLAY: what this post can show in the lightbox, see OVERLAY.md #}
         <p class="post_header">
             {% decl community -%}
             {% if post.community.starts_with("u_") -%}

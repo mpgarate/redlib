@@ -1,0 +1,40 @@
+{#-
+	COMPACT OVERLAY LAYOUT  (layout=compact-overlay)
+
+	Two things, and they are the only two this layout puts on a page:
+
+	  * `data(post)` - what one post can show in the lightbox. templates/utils.html calls it on
+	    one added line inside `post_in_list`, which is how the layout avoids editing the markup
+	    around the post thumbnail (see OVERLAY.md). image_overlay.js reads these and turns the
+	    ordinary `.post_thumbnail` into the trigger, so the href and the class are its business
+	    and not the template's.
+	  * the lightbox itself, at the bottom of the page, plus the script that drives it.
+
+	Both are gated on the layout: a page in card, clean or compact renders nothing from here.
+-#}
+
+{% if prefs.layout == "compact-overlay" %}
+	<div id="image_overlay" class="image_overlay" aria-hidden="true">
+		<div class="image_overlay_backdrop"></div>
+		<div class="image_overlay_content" role="dialog" aria-modal="true">
+			<button class="image_overlay_close" type="button" aria-label="Close image overlay">x</button>
+			<button class="overlay_gallery_nav overlay_gallery_prev" type="button" aria-label="Previous image" style="display: none;">&lt;</button>
+			<button class="overlay_gallery_nav overlay_gallery_next" type="button" aria-label="Next image" style="display: none;">&gt;</button>
+			<div class="overlay_gallery_counter" style="display: none;"></div>
+			<img id="image_overlay_img" alt="Expanded preview">
+			<video id="image_overlay_video" controls preload="metadata"></video>
+		</div>
+	</div>
+	<script src="/image_overlay.js?v={{ crate::utils::short_git_hash() }}"></script>
+{% endif %}
+
+{% macro data(post) -%}
+	<span class="overlay_data"
+	      data-post="{{ post.id }}"
+	      data-overlay-src="{{ post.overlay_image_url() }}"
+	      data-overlay-type="{{ post.post_type }}"
+	      data-overlay-mp4="{{ post.media.url }}"
+	      data-overlay-hls="{{ post.media.alt_url }}"
+	      data-overlay-poster="{{ post.media.poster }}"
+	      data-overlay-gallery="{% if post.post_type == "gallery" %}{% for image in post.gallery %}{{ image.url }}{% if !loop.last %}|{% endif %}{% endfor %}{% endif %}"></span>
+{%- endmacro %}

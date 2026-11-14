@@ -284,6 +284,10 @@ async fn main() {
 
 	// Read static files
 	app.at("/style.css").get(|_| style().boxed());
+	app.at("/overlay.css").get(|_| resource(include_str!("../static/overlay.css"), "text/css", false).boxed()); // OVERLAY
+	app
+		.at("/image_overlay.js")
+		.get(|_| resource(include_str!("../static/image_overlay.js"), "text/javascript", false).boxed()); // OVERLAY
 	app
 		.at("/manifest.json")
 		.get(|_| resource(include_str!("../static/manifest.json"), "application/json", false).boxed());

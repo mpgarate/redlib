@@ -1,0 +1,11 @@
+{#-
+	COMPACT OVERLAY LAYOUT  (layout=compact-overlay)
+
+	The layout's one entry in the settings layout list. It is a file of its own, included by one
+	added line in templates/settings.html, so that the settings template never has to edit the
+	`utils::options(...)` line upstream owns. The label is capitalised the way that macro
+	capitalises the others.
+-#}
+<option value="compact-overlay" {% if prefs.layout == "compact-overlay" %}selected{% endif %}>
+    Compact-overlay
+</option>
